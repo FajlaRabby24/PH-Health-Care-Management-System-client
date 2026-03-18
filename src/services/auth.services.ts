@@ -1,7 +1,6 @@
 "use server";
 
 import { envVars } from "@/config/env";
-import { setTokenInCookies } from "@/lib/tokenUtils";
 import { cookies } from "next/headers";
 
 const BASE_API_URL = envVars.NEXT_PUBLIC_API_BASE_URL;
@@ -14,34 +13,27 @@ export async function getNewTokensWithRefreshToken(
   refreshToken: string,
 ): Promise<boolean> {
   try {
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get("better-auth.session_token")?.value;
+
     const res = await fetch(`${BASE_API_URL}/auth/refresh-token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: `refreshToken=${refreshToken}`,
+        Cookie: `refreshToken=${refreshToken}; better-auth.session_token=${sessionToken}`,
       },
     });
+
+    // console.log({ res });
 
     if (!res.ok) {
       return false;
     }
 
-    const { data } = await res.json();
+    // const { data } = await res.json();
 
-    const { accessToken, refreshToken: newRefreshToken, token } = data;
-
-    if (accessToken) {
-      await setTokenInCookies("accessToken", accessToken);
-    }
-
-    if (newRefreshToken) {
-      await setTokenInCookies("refreshToken", newRefreshToken);
-    }
-
-    if (token) {
-      await setTokenInCookies("better-auth.session_token", token, 24 * 60 * 60); // 1 day in seconds
-    }
-
+    // Cookies are already set via set-cookie headers in the response
+    // No need to manually set them
     return true;
   } catch (error) {
     console.error("Error refreshing token:", error);
